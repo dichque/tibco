@@ -1,0 +1,9 @@
+FROM anapsix/alpine-java
+
+MAINTAINER Jagadish Nagarajaiah <jaganaga@cisco.com>
+
+COPY samplefile /samplefile
+
+WORKDIR /home/tibusr
+
+ENTRYPOINT ["/opt/tibco/bw/5.13/bin/bwengine", "--run", "--propFile", "/opt/tibco/bw/5.13/bin/bwengine.tra", "/samplefile/"]

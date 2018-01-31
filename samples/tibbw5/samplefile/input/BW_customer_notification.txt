@@ -1,0 +1,6 @@
+Hank Hill,
+Your order has been approved
+The cost is as follows, 
+Purchase cost : $123
+Shipping costs : $40
+Total Cost : $163

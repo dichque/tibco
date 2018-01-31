@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<pd:ProcessDefinition xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:pfx="http://www.tibco.com/ns/no_namespace_schema_location/new_order_schema.xsd" xmlns:pd="http://xmlns.tibco.com/bw/process/2003" xmlns:pfx2="http://www.tibco.com/namespaces/tnt/plugins/file" xmlns:ns="http://www.tibco.com/pe/SignalInActivitySchema" xmlns:pfx3="http://www.tibco.com/pe/DeployedVarsType">
+    <xs:import xmlns:xs="http://www.w3.org/2001/XMLSchema" namespace="http://www.tibco.com/ns/no_namespace_schema_location/new_order_schema.xsd" schemaLocation="/new_order_schema.xsd"/>
+    <pd:name>Process Order.process</pd:name>
+    <pd:description/>
+    <pd:startName>Listen for a New Order</pd:startName>
+    <pd:startX>0</pd:startX>
+    <pd:startY>0</pd:startY>
+    <pd:returnBindings>
+        <root/>
+    </pd:returnBindings>
+    <pd:starter name="Listen for a New Order">
+        <pd:type>com.tibco.plugin.file.FileEventSource</pd:type>
+        <pd:resourceType>ae.activities.FileEventSourceResource</pd:resourceType>
+        <pd:x>52</pd:x>
+        <pd:y>71</pd:y>
+        <config>
+            <fileName>%%BW_new_order_file%%</fileName>
+            <pollInterval>10</pollInterval>
+            <includeCurrent>true</includeCurrent>
+            <excludeContent>false</excludeContent>
+            <encoding>text</encoding>
+        </config>
+        <pd:inputBindings/>
+    </pd:starter>
+    <pd:endName>End</pd:endName>
+    <pd:endX>730</pd:endX>
+    <pd:endY>172</pd:endY>
+    <pd:errorSchemas/>
+    <pd:targetNamespace>http://xmlns.example.com/1321441019760</pd:targetNamespace>
+    <pd:activity name="Parse new order file">
+        <pd:type>com.tibco.plugin.xml.XMLParseActivity</pd:type>
+        <pd:resourceType>ae.activities.XMLParseActivity</pd:resourceType>
+        <pd:description/>
+        <pd:x>157</pd:x>
+        <pd:y>72</pd:y>
+        <config>
+            <validateOutput>true</validateOutput>
+            <term ref="pfx:order"/>
+            <inputStyle>text</inputStyle>
+        </config>
+        <pd:inputBindings>
+            <xmlString>
+                <xsl:value-of select="$Listen-for-a-New-Order/pfx2:EventSourceOuputTextClass/fileContent/textContent"/>
+            </xmlString>
+        </pd:inputBindings>
+    </pd:activity>
+    <pd:activity name="Calculate Shipping cost">
+        <pd:type>com.tibco.pe.core.CallProcessActivity</pd:type>
+        <pd:resourceType>ae.process.subprocess</pd:resourceType>
+        <pd:description/>
+        <pd:x>383</pd:x>
+        <pd:y>76</pd:y>
+        <config>
+            <processName>/Calculate Shipping costs.process</processName>
+            <spawn>false</spawn>
+        </config>
+        <pd:inputBindings>
+            <info_from_order>
+                <total_order_price>
+                    <xsl:value-of select="$Parse-new-order-file/order/total_price"/>
+                </total_order_price>
+                <destination>
+                    <xsl:value-of select="$Parse-new-order-file/order/ship_to_addr/ship_to_country"/>
+                </destination>
+            </info_from_order>
+        </pd:inputBindings>
+    </pd:activity>
+    <pd:activity name="Write Customer Notification File - Approval">
+        <pd:type>com.tibco.plugin.file.FileWriteActivity</pd:type>
+        <pd:resourceType>ae.activities.FileWriteActivity</pd:resourceType>
+        <pd:description/>
+        <pd:x>638</pd:x>
+        <pd:y>125</pd:y>
+        <config>
+            <append>false</append>
+            <encoding>text</encoding>
+        </config>
+        <pd:inputBindings>
+            <pfx2:WriteActivityInputTextClass>
+                <fileName>
+                    <xsl:value-of select="$_globalVariables/pfx3:GlobalVariables/BW_customer_notification"/>
+                </fileName>
+                <textContent>
+                    <xsl:value-of select="concat($Parse-new-order-file/order/customer_name, &quot;,&#xA;Your order has been &quot;, $Wait-for-Approval-File-Change/pfx2:EventSourceOuputTextClass/fileContent/textContent,&quot;&#xA;The cost is as follows, &#xA;Purchase cost : $&quot;, $Parse-new-order-file/order/total_price, &quot;&#xA;Shipping costs : $&quot;, $Calculate-Shipping-cost/shipping_costs, &quot;&#xA;Total Cost : $&quot;, $Parse-new-order-file/order/total_price + $Calculate-Shipping-cost/shipping_costs)"/>
+                </textContent>
+            </pfx2:WriteActivityInputTextClass>
+        </pd:inputBindings>
+    </pd:activity>
+    <pd:activity name="Create Approval File">
+        <pd:type>com.tibco.plugin.file.FileCreateActivity</pd:type>
+        <pd:resourceType>ae.activities.FileCreateActivity</pd:resourceType>
+        <pd:description/>
+        <pd:x>272</pd:x>
+        <pd:y>75</pd:y>
+        <config>
+            <overwrite>true</overwrite>
+        </config>
+        <pd:inputBindings>
+            <pfx2:CreateActivityInputClass>
+                <fileName>
+                    <xsl:value-of select="$_globalVariables/pfx3:GlobalVariables/BW_approval_file"/>
+                </fileName>
+            </pfx2:CreateActivityInputClass>
+        </pd:inputBindings>
+    </pd:activity>
+    <pd:activity name="Wait for Approval File Change">
+        <pd:type>com.tibco.plugin.file.FileSignalIn</pd:type>
+        <pd:resourceType>ae.activities.FileSignalInUI</pd:resourceType>
+        <pd:description/>
+        <pd:x>379</pd:x>
+        <pd:y>206</pd:y>
+        <config>
+            <_filter>contains(pfx2:EventSourceOuputTextClass/fileContent/textContent, "approved") or contains(pfx2:EventSourceOuputTextClass/fileContent/textContent, "delayed")</_filter>
+            <_eventTimeout>50000</_eventTimeout>
+            <fileName>%%BW_approval_file%%</fileName>
+            <pollInterval>5</pollInterval>
+            <includeCurrent>true</includeCurrent>
+            <excludeContent>false</excludeContent>
+            <encoding>text</encoding>
+        </config>
+        <pd:inputBindings>
+            <ns:input>
+                <key>
+                    <xsl:value-of select="&quot;true&quot;"/>
+                </key>
+            </ns:input>
+        </pd:inputBindings>
+    </pd:activity>
+    <pd:activity name="Remove Approval  File">
+        <pd:type>com.tibco.plugin.file.FileRemoveActivity</pd:type>
+        <pd:resourceType>ae.activities.FileRemoveActivity</pd:resourceType>
+        <pd:description/>
+        <pd:x>497</pd:x>
+        <pd:y>209</pd:y>
+        <config/>
+        <pd:inputBindings>
+            <pfx2:RemoveActivityInputClass>
+                <fileName>
+                    <xsl:value-of select="$_globalVariables/pfx3:GlobalVariables/BW_approval_file"/>
+                </fileName>
+            </pfx2:RemoveActivityInputClass>
+        </pd:inputBindings>
+    </pd:activity>
+    <pd:activity name="Write-Customer-Notification-File-Problem">
+        <pd:type>com.tibco.plugin.file.FileWriteActivity</pd:type>
+        <pd:resourceType>ae.activities.FileWriteActivity</pd:resourceType>
+        <pd:description/>
+        <pd:x>647</pd:x>
+        <pd:y>243</pd:y>
+        <config>
+            <append>false</append>
+            <encoding>text</encoding>
+        </config>
+        <pd:inputBindings>
+            <pfx2:WriteActivityInputTextClass>
+                <fileName>
+                    <xsl:value-of select="$_globalVariables/pfx3:GlobalVariables/BW_customer_notification"/>
+                </fileName>
+                <textContent>
+                    <xsl:value-of select="concat($Parse-new-order-file/order/customer_name, &quot;,&#xA;Your order has been delayed due to problems&quot;,&quot;&#xA;We will contact you at your &quot;, $Parse-new-order-file/order/ship_to_addr/ship_to_city, &quot; address with further details.&#xA;Regards,&#xA;TIBCO Software Inc.&quot;)"/>
+                </textContent>
+            </pfx2:WriteActivityInputTextClass>
+        </pd:inputBindings>
+    </pd:activity>
+    <pd:transition>
+        <pd:from>Listen for a New Order</pd:from>
+        <pd:to>Parse new order file</pd:to>
+        <pd:lineType>Default</pd:lineType>
+        <pd:lineColor>-16777216</pd:lineColor>
+        <pd:conditionType>always</pd:conditionType>
+    </pd:transition>
+    <pd:transition>
+        <pd:from>Write Customer Notification File - Approval</pd:from>
+        <pd:to>End</pd:to>
+        <pd:lineType>Default</pd:lineType>
+        <pd:lineColor>-16777216</pd:lineColor>
+        <pd:conditionType>always</pd:conditionType>
+    </pd:transition>
+    <pd:transition>
+        <pd:from>Parse new order file</pd:from>
+        <pd:to>Create Approval File</pd:to>
+        <pd:lineType>Default</pd:lineType>
+        <pd:lineColor>-16777216</pd:lineColor>
+        <pd:conditionType>always</pd:conditionType>
+    </pd:transition>
+    <pd:transition>
+        <pd:from>Create Approval File</pd:from>
+        <pd:to>Calculate Shipping cost</pd:to>
+        <pd:lineType>Default</pd:lineType>
+        <pd:lineColor>-16777216</pd:lineColor>
+        <pd:conditionType>always</pd:conditionType>
+    </pd:transition>
+    <pd:transition>
+        <pd:from>Calculate Shipping cost</pd:from>
+        <pd:to>Wait for Approval File Change</pd:to>
+        <pd:lineType>Default</pd:lineType>
+        <pd:lineColor>-16777216</pd:lineColor>
+        <pd:conditionType>always</pd:conditionType>
+    </pd:transition>
+    <pd:transition>
+        <pd:from>Wait for Approval File Change</pd:from>
+        <pd:to>Remove Approval  File</pd:to>
+        <pd:lineType>Default</pd:lineType>
+        <pd:lineColor>-16777216</pd:lineColor>
+        <pd:conditionType>always</pd:conditionType>
+    </pd:transition>
+    <pd:transition>
+        <pd:description/>
+        <pd:from>Remove Approval  File</pd:from>
+        <pd:to>Write Customer Notification File - Approval</pd:to>
+        <pd:xpathDescription>Order Approved</pd:xpathDescription>
+        <pd:lineType>Default</pd:lineType>
+        <pd:lineColor>-16777216</pd:lineColor>
+        <pd:conditionType>xpath</pd:conditionType>
+        <pd:xpath>contains($Wait-for-Approval-File-Change/pfx2:EventSourceOuputTextClass/fileContent/textContent, "approved")</pd:xpath>
+    </pd:transition>
+    <pd:transition>
+        <pd:from>Write-Customer-Notification-File-Problem</pd:from>
+        <pd:to>End</pd:to>
+        <pd:lineType>Default</pd:lineType>
+        <pd:lineColor>-16777216</pd:lineColor>
+        <pd:conditionType>always</pd:conditionType>
+    </pd:transition>
+    <pd:transition>
+        <pd:description/>
+        <pd:from>Remove Approval  File</pd:from>
+        <pd:to>Write-Customer-Notification-File-Problem</pd:to>
+        <pd:xpathDescription>Order Delayed</pd:xpathDescription>
+        <pd:lineType>Default</pd:lineType>
+        <pd:lineColor>-16777216</pd:lineColor>
+        <pd:conditionType>xpath</pd:conditionType>
+        <pd:xpath>contains($Wait-for-Approval-File-Change/pfx2:EventSourceOuputTextClass/fileContent/textContent,"delayed")</pd:xpath>
+    </pd:transition>
+</pd:ProcessDefinition>

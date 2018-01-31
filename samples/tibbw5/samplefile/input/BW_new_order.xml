@@ -1,0 +1,20 @@
+<?xml version = "1.0" encoding = "UTF-8"?>
+<order xmlns:xsi = "http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation = "BW_new_order.xsd">
+	<customer_name>Hank Hill</customer_name>  
+	<ship_to_addr>
+		<ship_to_street>1234 Main Street</ship_to_street>
+		<ship_to_city>Arlen</ship_to_city>
+		<ship_to_state>Texas</ship_to_state>
+		<ship_to_zip_code>78712</ship_to_zip_code>
+		<ship_to_country>USA</ship_to_country>  
+	</ship_to_addr>  
+	<items>   
+		<item_no>9876</item_no>  
+		<quantity>1</quantity>   
+	</items>   
+	<items>   
+		<item_no>5612</item_no>  
+		<quantity>2</quantity>  
+	</items>  
+	<total_price>123</total_price>
+</order>
